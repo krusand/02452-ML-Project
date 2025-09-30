@@ -81,20 +81,22 @@ for i, pc in enumerate(V[:, :n_components].T):
 plt.xticks(r + bw, X.columns)
 plt.ylabel("Component coefficients")
 plt.legend()
-plt.grid()
+plt.grid(color="white")
 fig.savefig("figures/pca_coef.png", dpi=300, bbox_inches="tight")
 
 # plotting attribute coefficients in PC1/PC2-space
 PC_idxs = [0, 1]
 fig = plt.figure(figsize=(8, 8))
-plt.title("Attribute coefficients in PC space")
+plt.title("Attribute coefficients in PC space", fontsize=24)
 
 for attr_idx, attr_name in enumerate(X.columns):
     plt.arrow(0, 0, V[attr_idx, PC_idxs[0]], V[attr_idx, PC_idxs[1]], color='black', alpha=0.5)
-    plt.text(V[attr_idx, PC_idxs[0]], V[attr_idx, PC_idxs[1]], attr_name)
+    plt.text(V[attr_idx, PC_idxs[0]], V[attr_idx, PC_idxs[1]], attr_name, fontsize=18)
     
-plt.xlabel(f"PC{PC_idxs[0] + 1}")
-plt.ylabel(f"PC{PC_idxs[1] + 1}")
+plt.xlabel(f"PC{PC_idxs[0] + 1}", fontsize=18)
+plt.ylabel(f"PC{PC_idxs[1] + 1}", fontsize=18)
+plt.xticks(fontsize=16)  
+plt.yticks(fontsize=16) 
 plt.grid()
 
 plt.plot(np.cos(np.arange(0, 2 * np.pi, 0.01)), np.sin(np.arange(0, 2 * np.pi, 0.01)))   # unit circle
@@ -116,7 +118,7 @@ plt.title("Variance explained by principal components")
 plt.xlabel("#Principal components")
 plt.ylabel("Proportion of variance explained")
 plt.legend(["Individual", "Cumulative", "Threshold"])
-plt.grid()
+plt.grid(color="white")
 plt.tight_layout()
 fig.savefig("figures/expl_var.png", dpi=300, bbox_inches="tight")
 
