@@ -72,15 +72,17 @@ n_components = 3
 colors = ['#225ea8', '#41b6c4', '#c7e9b4']
 
 fig = plt.figure(figsize=(12, 8))
-plt.title(f"PCA component coefficients - first {n_components} components")
+plt.title(f"PCA component coefficients - first {n_components} components", fontsize=24)
 
 for i, pc in enumerate(V[:, :n_components].T):
     color = colors[i] if i < len(colors) else None
     plt.bar(r + i * bw, pc, width=bw, label=f"PC{i+1}", color=color)
     
 plt.xticks(r + bw, X.columns)
-plt.ylabel("Component coefficients")
-plt.legend()
+plt.ylabel("Component coefficients", fontsize=18)
+plt.xticks(fontsize=16)  
+plt.yticks(fontsize=16) 
+plt.legend(fontsize=16)
 plt.grid(color="white")
 fig.savefig("figures/pca_coef.png", dpi=300, bbox_inches="tight")
 
@@ -114,10 +116,12 @@ plt.plot(range(1, len(rho) + 1), rho, "x-", color="#225ea8")                 # i
 plt.plot(range(1, len(rho) + 1), np.cumsum(rho), "o-", color="#41b6c4")      # accumulated proportion of variance explained
 plt.plot([1, len(rho)], [threshold, threshold], "k--")                         # threshold
 
-plt.title("Variance explained by principal components")
-plt.xlabel("#Principal components")
-plt.ylabel("Proportion of variance explained")
-plt.legend(["Individual", "Cumulative", "Threshold"])
+plt.title("Variance explained by principal components", fontsize=24)
+plt.xlabel("#Principal components", fontsize=18)
+plt.ylabel("Proportion of variance explained", fontsize=18)
+plt.xticks(fontsize=16)  
+plt.yticks(fontsize=16) 
+plt.legend(["Individual", "Cumulative", "Threshold"], fontsize=16)
 plt.grid(color="white")
 plt.tight_layout()
 fig.savefig("figures/expl_var.png", dpi=300, bbox_inches="tight")
@@ -127,14 +131,16 @@ B = pca.transform(X_tilde)
 unique_classes = np.unique(y)
 
 fig = plt.figure(figsize=(8, 6))
-plt.title("Data projected onto the PCA space")
+plt.title("Data projected onto the PCA space", fontsize=24)
 
 for chd_val in unique_classes:
     mask = (y == chd_val)
     plt.scatter(B[mask, PC_idxs[0]], B[mask, PC_idxs[1]], s=30, alpha=0.8, label=f"chd={chd_val}")
 
-plt.xlabel(f"PC{PC_idxs[0] + 1}")
-plt.ylabel(f"PC{PC_idxs[1] + 1}")
-plt.legend(loc="upper left")
+plt.xlabel(f"PC{PC_idxs[0] + 1}", fontsize=18)
+plt.ylabel(f"PC{PC_idxs[1] + 1}", fontsize=18)
+plt.xticks(fontsize=16)  
+plt.yticks(fontsize=16) 
+plt.legend(loc="upper left", fontsize=16)
 plt.tight_layout()
 fig.savefig("figures/projected_scatter.png", dpi=300, bbox_inches="tight")
