@@ -4,6 +4,8 @@ from typing import Iterable
 import numpy as np
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import train_test_split
+from sklearn.base import BaseEstimator, TransformerMixin
+
 
 
 def compute_error(y_true: np.ndarray,
@@ -86,3 +88,21 @@ def two_layer_cv(k1: int,
             lam = 1 / params["C"]
         
     return results
+
+class LogTransformer(BaseEstimator, TransformerMixin):
+    
+    def __init__(self, columns_to_transform):
+        self.columns_to_transform = columns_to_transform
+    
+    def fit(self, X, y=None):
+        self.columns_ = X.columns
+        return self
+    
+    def transform(self, X):
+        X = X.copy()
+        for col in self.columns_to_transform:
+            X[col] = np.log(X[col] + 1/100000)
+        return X
+    
+    def get_feature_names_out(self, *args, **params):
+        return self.columns_
