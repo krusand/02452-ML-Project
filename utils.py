@@ -14,7 +14,7 @@ def compute_error(y_true: np.ndarray,
     Computes the mean squared error (MSE) for regression models and the error rate for classification models. 
 
     Parameters:
-    - y_true:       The true values of the validation or test data.
+    - y_true:       The true values of the validation or test data. 
     - y_pred:       The values predicted by the model. 
     - mode:         The type of model, regression by default. 
 
@@ -102,15 +102,18 @@ def two_level_cv(k_out: int,
         y_pred = fitted_model.predict(X_test)
         test_error = compute_error(y_test, y_pred, mode=mode)
 
-        params = fitted_model.get_params()
+        # obtain model parameters and name
+        params = best_model.get_params()
+        model_name = best_model.__class__.__name__
 
-        if mode == "regression":
-            lam = params["alpha"]
-        elif mode == "classification":
-            lam = 1 / params["C"]
+        # identify relevant parameter and its value
+        param_dict = {"Ridge": params["alpha"],
+                      "BaselineRegressor": "-",
+                      "ANNRegressor": params["hidden_dim"]}
+        param_value = param_dict[model_name]
         
         # append results to results dictionary
-        results[i+1]["param_value"] = lam
+        results[i+1]["param_value"] = param_value
         results[i+1]["test_error"] = test_error
 
     return results
