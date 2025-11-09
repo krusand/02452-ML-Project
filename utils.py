@@ -175,7 +175,7 @@ class Preprocessor:
         assert self.task in {
             "classification",
             "regression",
-        }, f"Task must equal either 'Classification' or 'Regression', task provided {self.task}"
+        }, f"Task must equal either 'classification' or 'regression', task provided {self.task}"
 
         if self.task == "regression":
             self.COVARIATES = [
@@ -261,6 +261,11 @@ class Preprocessor:
         elif self.task == "classification":
             X_preprocessed = self.preproc.transform(X)
         return pd.DataFrame(X_preprocessed, columns=self.columns_, index=df_.index), y
+
+    def fit_transform(self, df):
+        self.fit(df)
+        X, y = self.transform(df)
+        return X, y
 
     def get_feature_names_out(self, *args, **params):
         return self.columns_
