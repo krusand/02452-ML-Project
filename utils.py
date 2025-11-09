@@ -85,8 +85,8 @@ def two_layer_cv(
 
     for i, (train_idx, test_idx) in enumerate(kfold_out.split(X)):
         # split into train and test set
-        X_train_out, X_test = X[train_idx], X[test_idx]
-        y_train_out, y_test = y[train_idx], y[test_idx]
+        X_train_out, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train_out, y_test = y.iloc[train_idx], y.iloc[test_idx]
         val_errors = defaultdict(list)
 
         # initializing folds for inner loop
@@ -94,8 +94,8 @@ def two_layer_cv(
 
         for _, (train_idx, val_idx) in enumerate(kfold_in.split(X_train_out)):
             # split into train and validation set
-            X_train_in, X_val = X_train_out[train_idx], X_train_out[val_idx]
-            y_train_in, y_val = y_train_out[train_idx], y_train_out[val_idx]
+            X_train_in, X_val = X_train_out.iloc[train_idx], X_train_out.iloc[val_idx]
+            y_train_in, y_val = y_train_out.iloc[train_idx], y_train_out.iloc[val_idx]
 
             for s, model in enumerate(models):
                 # fit model on train set
@@ -114,7 +114,7 @@ def two_layer_cv(
 
         # retrieving the model with the lowest average validation loss
         best_model_name = min(averages, key=averages.get)
-        best_model_idx = best_model_name.split("_")[1]
+        best_model_idx = int(best_model_name.split("_")[1])
         best_model = models[best_model_idx]
 
         # train best model on X_train_out and y_train_out
@@ -128,13 +128,12 @@ def two_layer_cv(
         params = best_model.get_params()
         model_name = best_model.__class__.__name__
 
-        # identify relevant parameter and its value
-        param_dict = {
-            "Ridge": ("lambda", params["alpha"]),
-            "BaselineRegressor": ("-", "-"),
-            "ANNRegressor": ("h", params["hidden_dim"]),
-        }
-        param_name, param_val = param_dict[model_name]
+        if model_name == "Ridge":
+            param_name, param_val = "lambda", params["alpha"]
+        elif model_name == "BaselineRegressor":
+            param_name, param_val = None, None
+        elif model_name == "ANNRegressor":
+            param_name, param_val = "h", params["hidden_dim"]
 
         # append results to results dictionary
         results["fold"].append(i + 1)
