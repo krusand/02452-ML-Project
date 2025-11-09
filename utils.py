@@ -9,8 +9,11 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import KFold
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.valiation import check_X_y, check_array, check_is_fitted
 
+from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
+
+from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.base import (
     BaseEstimator,
@@ -19,6 +22,7 @@ from sklearn.base import (
     RegressorMixin,
 )
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.compose import ColumnTransformer
 
 
 def compute_error(y_true: np.ndarray,
@@ -158,6 +162,64 @@ class LogTransformer(BaseEstimator, TransformerMixin):
     def get_feature_names_out(self, *args, **params):
         return self.columns_
 
+
+class Preprocessor():
+    def __init__(self, task):
+        self.task = task
+        assert self.task in {"Classification", "Regression"}, f"Task must equal either 'Classification' or 'Regression', task provided {self.task}"
+
+        if self.task == 'Regression':
+            self.COVARIATES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "chd", "famhist"]
+            self.INDEPENDENT = ["obesity"]
+            self.CATEGORICAL_VARIABLES = ["chd", "famhist"]
+            self.CONTINUOUS_VARIABLES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age"]
+
+        elif self.task == 'Classification':
+            self.COVARIATES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "obesity", "famhist"]
+            self.INDEPENDENT = ["chd"]
+            self.CATEGORICAL_VARIABLES = ["famhist"]
+            self.CONTINUOUS_VARIABLES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "obesity"]
+
+        self.num_pipeline = Pipeline(steps=[
+        ('log_transform', LogTransformer(["alcohol", "tobacco"])),
+        ('scaler', StandardScaler().set_output(transform='pandas'))
+        ])
+
+        self.cat_pipeline = Pipeline(steps=[
+                ('onehotencoder', OneHotEncoder())
+        ])
+   
+        self.preproc = ColumnTransformer([
+            ("num", self.num_pipeline, self.CONTINUOUS_VARIABLES),
+            ("cat", self.cat_pipeline, self.CATEGORICAL_VARIABLES),
+        ], remainder='passthrough')
+        
+        return None
+
+    def fit(self, df, y=None):
+        if self.task == 'Regression':
+            self.preproc.fit(df[self.COVARIATES])
+        elif self.task == 'Classification':
+            self.preproc.fit(df[self.COVARIATES])
+        self.is_fitted_ = True
+        self.columns_ = self.preproc.get_feature_names_out()
+        return None
+
+    def transform(self, df):
+        check_is_fitted(self)
+        df_ = df.copy()
+        X = df_[self.COVARIATES]
+        y = df_[self.INDEPENDENT]
+
+        if self.task == 'Regression':
+            X_preprocessed = self.preproc.transform(X)
+        elif self.task == 'Classification':
+            X_preprocessed = self.preproc.transform(X)
+        return pd.DataFrame(X_preprocessed, columns=self.columns_, index=df_.index), y
+
+
+    def get_feature_names_out(self, *args, **params):
+        return self.columns_
 
 class BaselineRegressor(BaseEstimator, RegressorMixin):
     def __init__(self):
@@ -305,3 +367,5 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
 
     def get_params(self, deep=False):
         return {"hidden_dim": self.hidden_dim_}
+
+
