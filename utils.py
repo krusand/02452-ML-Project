@@ -130,10 +130,12 @@ def two_layer_cv(
 
         if model_name == "Ridge":
             param_name, param_val = "lambda", params["alpha"]
-        elif model_name == "BaselineRegressor":
+        elif model_name == "BaselineRegressor" or model_name == "BaselineClassifier":
             param_name, param_val = None, None
-        elif model_name == "ANNRegressor":
+        elif model_name == "ANNRegressor" or model_name == "ANNClassifier":
             param_name, param_val = "h", params["hidden_dim"]
+        elif model_name == "LogisticRegression":
+            param_name, param_val = "lambda", 1 / params["C"]
 
         # append results to results dictionary
         results["fold"].append(i + 1)
@@ -321,10 +323,11 @@ class BaselineClassifier(BaseEstimator, ClassifierMixin):
 
 
 class ANNRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, input_dim, hidden_dim, n_epochs=1000, learning_rate=1e-5):
+    def __init__(self, hidden_dim, input_dim=10, n_epochs=1000, learning_rate=1e-5, verbose=True):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
         self.learning_rate_ = learning_rate
+        self.verbose = verbose
         self.model_ = torch.nn.Sequential(
             torch.nn.Linear(
                 in_features=self.input_dim_, out_features=self.hidden_dim_, bias=True
@@ -337,7 +340,7 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
         self.n_epochs_ = n_epochs
         return None
 
-    def fit(self, X, y, verbose=True):
+    def fit(self, X, y):
 
         self.n_features_in_ = X.shape[1]
         self.columns_ = X.columns
@@ -352,10 +355,10 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
             params=self.model_.parameters(), lr=self.learning_rate_
         )
 
-        for epoch in tqdm(range(self.n_epochs_) if verbose else range(self.n_epochs_)):
+        for epoch in range(self.n_epochs_):
             self.model_.train()
             outputs = self.model_(torch.tensor(X.to_numpy()).float()).reshape(-1)
-            loss = self.criterion(outputs, torch.tensor(y.to_numpy()).float())
+            loss = self.criterion(outputs, torch.tensor(y.to_numpy()).float().reshape(-1))
 
             self.optimizer.zero_grad()
 
@@ -384,7 +387,7 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
 
 
 class ANNClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, input_dim, hidden_dim, n_epochs=1000, learning_rate=1e-5):
+    def __init__(self, hidden_dim, input_dim=9, n_epochs=1000, learning_rate=1e-5, verbose=True):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
         self.learning_rate_ = learning_rate
@@ -396,12 +399,11 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
             torch.nn.Linear(
                 in_features=self.hidden_dim_, out_features=2, bias=True
             ),  # Output layer
-            torch.nn.Sigmoid(),
         )
         self.n_epochs_ = n_epochs
         return None
 
-    def fit(self, X, y, verbose=True):
+    def fit(self, X, y):
 
         self.n_features_in_ = X.shape[1]
         self.columns_ = X.columns
@@ -411,15 +413,15 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
         ), f"Number of columns in data {self.n_features_in_} must equal number of nodes in first layer of ANN {self.input_dim_}"
 
         self.losses = []
-        self.criterion = torch.nn.BCELoss()
+        self.criterion = torch.nn.CrossEntropyLoss()
         self.optimizer = torch.optim.SGD(
             params=self.model_.parameters(), lr=self.learning_rate_
         )
 
-        for epoch in tqdm(range(self.n_epochs_) if verbose else range(self.n_epochs_)):
+        for epoch in range(self.n_epochs_):
             self.model_.train()
-            outputs = self.model_(torch.tensor(X.to_numpy()).float()).reshape(-1)
-            loss = self.criterion(outputs, torch.tensor(y.to_numpy()).float())
+            outputs = self.model_(torch.tensor(X.to_numpy()).float())
+            loss = self.criterion(outputs, torch.tensor(y.to_numpy()).long().squeeze())
 
             self.optimizer.zero_grad()
 
@@ -437,7 +439,9 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
         check_is_fitted(self)
         with torch.no_grad():
             self.model_.eval()
-            y_hat = self.model_(torch.tensor(X.to_numpy()).float())
+            logits = self.model_(torch.tensor(X.to_numpy()).float())
+            probs = torch.softmax(logits, dim=1)
+            y_hat = np.argmax(probs, axis=1).unsqueeze(1)
         return y_hat
 
     def get_feature_names_out(self, *args, **params):
