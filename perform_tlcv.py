@@ -22,25 +22,30 @@ models_list_clf = [[ANNClassifier(hidden_dim=hd, verbose=False) for hd in hds],
 # loading the data
 df = pd.read_csv("data/heartDisease.csv")
 
-# preprocessing data
-PreProp = Preprocessor(task="classification")
-PreProp.fit(df)
-X, y = PreProp.transform(df)
+# preprocessing data for regression
+PreProp_reg = Preprocessor(task="regression")
+PreProp_reg.fit(df)
+X_reg, y_reg = PreProp_reg.transform(df)
 
 # performing two-level cross-validation for the regression models
 for models in models_list_reg:
     two_layer_cv(k_in=10,
-                k_out=10,
-                models=models,
-                X=X,
-                y=y,
-                mode="regression")
+                 k_out=10,
+                 models=models,
+                 X=X_reg,
+                 y=y_reg,
+                 mode="regression")
+
+# preprocessing data for classification
+PreProp_clf = Preprocessor(task="classification")
+PreProp_clf.fit(df)
+X_clf, y_clf = PreProp_clf.transform(df)
 
 # performing two-level cross-validation for the classification models
 for models in models_list_clf:
     two_layer_cv(k_in=10,
-                k_out=10,
-                models=models,
-                X=X,
-                y=y,
-                mode="classification")
+                 k_out=10,
+                 models=models,
+                 X=X_clf,
+                 y=y_clf,
+                 mode="classification")
