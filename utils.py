@@ -4,8 +4,8 @@ from typing import Iterable
 import numpy as np
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import train_test_split
-from sklearn.base import BaseEstimator, TransformerMixin
-
+from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 
 def compute_error(y_true: np.ndarray,
@@ -106,3 +106,26 @@ class LogTransformer(BaseEstimator, TransformerMixin):
     
     def get_feature_names_out(self, *args, **params):
         return self.columns_
+
+
+class BaselineRegressor(BaseEstimator, RegressorMixin):
+    def __init__(self):
+        return None
+    
+    def fit(self, X, y):
+        # Store training info
+        self.n_features_in_ = X.shape[1]
+        self.is_fitted_ = True
+        self.baseline_value = y.mean()
+        self.columns_ = X.columns
+        return self
+
+    def predict(self, X):
+
+        check_is_fitted(self)
+
+        return np.repeat(self.baseline_value, X.shape[0])
+        
+    def get_feature_names_out(self, *args, **params):
+        return self.columns_
+
