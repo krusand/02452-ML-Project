@@ -262,6 +262,11 @@ class Preprocessor:
             X_preprocessed = self.preproc.transform(X)
         return pd.DataFrame(X_preprocessed, columns=self.columns_, index=df_.index), y
 
+    def fit_transform(self, df):
+        self.fit(df)
+        X, y = self.transform(df)
+        return X, y
+
     def get_feature_names_out(self, *args, **params):
         return self.columns_
 
