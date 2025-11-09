@@ -1,10 +1,10 @@
 from collections import defaultdict
 from typing import Iterable
 
-import torch
 import numpy as np
+import pandas as pd
+import torch
 from tqdm import tqdm
-
 
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import KFold
@@ -50,15 +50,14 @@ def compute_error(y_true: np.ndarray,
     return error_val
 
 
-def two_layer_cv(
-    k1: int,
-    k2: int,
-    models: Iterable,
-    X: np.ndarray,
-    y: np.ndarray,
-    mode="regression",
-    seed=131125,
-) -> dict:
+def two_layer_cv(k_out: int,
+                 k_in: int,
+                 models: Iterable,
+                 X: np.ndarray,
+                 y: np.ndarray,
+                 mode="regression",
+                 seed=131125,
+                 ) -> None:
     """
     Performs two-layer cross-validation for a set of models.
 
@@ -70,11 +69,8 @@ def two_layer_cv(
     - y:        Vector containing the output variable for each data point.
     - mode:     Task performed by the models, either "regression" or "classification".
     - seed:     Seed used for reproducibility purposes.
-
-    Returns:
-    - results:  Dictionary containing the optimal model (hyperparameter value(s)) and the corresponding test error per iteration of the outer loop.
     """
-    results = defaultdict(dict)
+    results = defaultdict(list)
 
     # initializing folds for outer loop
     kfold_out = KFold(n_splits=k_out, shuffle=True, random_state=seed)
@@ -125,16 +121,23 @@ def two_layer_cv(
         model_name = best_model.__class__.__name__
 
         # identify relevant parameter and its value
-        param_dict = {"Ridge": params["alpha"],
-                      "BaselineRegressor": "-",
-                      "ANNRegressor": params["hidden_dim"]}
-        param_value = param_dict[model_name]
-        
-        # append results to results dictionary
-        results[i+1]["param_value"] = param_value
-        results[i+1]["test_error"] = test_error
+        param_dict = {"Ridge": ("lambda", params["alpha"]),
+                      "BaselineRegressor": ("-", "-"),
+                      "ANNRegressor": ("h", params["hidden_dim"])}
+        param_name, param_val = param_dict[model_name]
 
-    return results
+        # append results to results dictionary 
+        results["fold"].append(i+1)
+        results["model"].append(model_name)
+        results["param_name"].append(param_name)
+        results["param_val"].append(param_val)
+        results["test_error"].append(test_error)
+
+    # converting results dict to dataframe
+    df = pd.DataFrame.from_dict(results)
+
+    # write append results to csv file
+    df.to_csv(f'tlcv_results/{mode}_results.csv', mode='a', index=False, header=False)
 
 
 class LogTransformer(BaseEstimator, TransformerMixin):
