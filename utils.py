@@ -175,7 +175,7 @@ class Preprocessor:
         assert self.task in {
             "classification",
             "regression",
-        }, f"Task must equal either 'Classification' or 'Regression', task provided {self.task}"
+        }, f"Task must equal either 'classification' or 'regression', task provided {self.task}"
 
         if self.task == "regression":
             self.COVARIATES = [
