@@ -9,7 +9,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import KFold
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
-from sklearn.utils.valiation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
 
