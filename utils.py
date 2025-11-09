@@ -295,6 +295,31 @@ class BaselineRegressor(BaseEstimator, RegressorMixin):
         return {"Baseline": "None"}
 
 
+class BaselineClassifier(BaseEstimator, ClassifierMixin):
+    def __init__(self):
+        return None
+
+    def fit(self, X, y):
+        # Store training info
+        self.n_features_in_ = X.shape[1]
+        self.baseline_value = y.mode()
+        self.columns_ = X.columns
+        self.is_fitted_ = True
+        return self
+
+    def predict(self, X):
+
+        check_is_fitted(self)
+
+        return np.repeat(self.baseline_value, X.shape[0])
+
+    def get_feature_names_out(self, *args, **params):
+        return self.columns_
+
+    def get_params(self, deep=False):
+        return {"Baseline": "None"}
+
+
 class ANNRegressor(BaseEstimator, RegressorMixin):
     def __init__(self, input_dim, hidden_dim, n_epochs=1000, learning_rate=1e-5):
         self.hidden_dim_ = hidden_dim
