@@ -3,9 +3,8 @@ from typing import Iterable
 
 import numpy as np
 from sklearn.metrics import accuracy_score, mean_squared_error
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
 from sklearn.base import BaseEstimator, TransformerMixin
-
 
 
 def compute_error(y_true: np.ndarray,
@@ -35,8 +34,8 @@ def compute_error(y_true: np.ndarray,
     return error_val
 
 
-def two_layer_cv(k1: int, 
-                 k2: int, 
+def two_level_cv(k_out: int, 
+                 k_in: int, 
                  models: Iterable,
                  X: np.ndarray,
                  y: np.ndarray,
@@ -46,8 +45,8 @@ def two_layer_cv(k1: int,
     Performs two-layer cross-validation for a set of models. 
 
     Parameters:
-    - k1:       Number of folds in the outer loop.
-    - k2:       Number of folds in the inner loop.
+    - k_out:    Number of folds in the outer loop.
+    - k_in:     Number of folds in the inner loop.
     - models:   Iterable containing the models to compare.
     - X:        Features matrix used for training each model.
     - y:        Vector containing the output variable for each data point. 
@@ -59,26 +58,49 @@ def two_layer_cv(k1: int,
     """
     results = defaultdict(dict)
 
-    for i in range(k1):
+    # initializing folds for outer loop
+    kfold_out = KFold(n_splits=k_out, shuffle=True, random_state=seed)
+    
+    for i, (train_idx, test_idx) in enumerate(kfold_out.split(X)):
+        # split into train and test set
+        X_train_out, X_test = X[train_idx], X[test_idx]
+        y_train_out, y_test = y[train_idx], y[test_idx]
         val_errors = defaultdict(list)
-        X_train_outer, X_test_outer, y_train_outer, y_test_outer = train_test_split(X, 
-                                                                                    y, 
-                                                                                    test_size=1/k1, 
-                                                                                    random_state=seed)
 
-        for _ in range(k2):
-            X_train_inner, X_test_inner, y_train_inner, y_test_inner = train_test_split(X_train_outer, 
-                                                                                        y_train_outer, 
-                                                                                        test_size=1/k2, 
-                                                                                        random_state=seed)
+        # initializing folds for inner loop
+        kfold_in = KFold(n_splits=k_in, shuffle=True, random_state=seed)
+
+        for _, (train_idx, val_idx) in enumerate(kfold_in.split(X_train_out)):
+            # split into train and validation set
+            X_train_in, X_val = X_train_out[train_idx], X_train_out[val_idx]
+            y_train_in, y_val = y_train_out[train_idx], y_train_out[val_idx]
             
             for s, model in enumerate(models):
-                fitted_model = model.fit(X_train_inner, y_train_inner)
-                y_pred = fitted_model.predict(X_test_inner)
+                # fit model on train set
+                fitted_model = model.fit(X_train_in, y_train_in)
+                
+                # get predictions and compute val error
+                y_pred = fitted_model.predict(X_val)
+                val_error = compute_error(y_val, y_pred, mode=mode) 
 
-                error_val = compute_error(y_test_inner, y_pred, mode=mode) 
+                # append results to val_errors dictionary
                 model_name = f"model_{s}"
-                val_errors[model_name].append(error_val)
+                val_errors[model_name].append(val_error)
+
+        # computing the average validation loss for each model
+        averages = {k: np.mean(v) for k, v in val_errors.items()}
+
+        # retrieving the model with the lowest average validation loss
+        best_model_name = min(averages, key=averages.get)
+        best_model_idx = best_model_name.split("_")[1]
+        best_model = models[best_model_idx]
+
+        # train best model on X_train_out and y_train_out
+        fitted_model = best_model.fit(X_train_out, y_train_out)
+
+        # get predictions and compute test error
+        y_pred = fitted_model.predict(X_test)
+        test_error = compute_error(y_test, y_pred, mode=mode)
 
         params = fitted_model.get_params()
 
@@ -87,7 +109,12 @@ def two_layer_cv(k1: int,
         elif mode == "classification":
             lam = 1 / params["C"]
         
+        # append results to results dictionary
+        results[i+1]["param_value"] = lam
+        results[i+1]["test_error"] = test_error
+
     return results
+
 
 class LogTransformer(BaseEstimator, TransformerMixin):
     
