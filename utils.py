@@ -8,7 +8,12 @@ from tqdm import tqdm
 
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import KFold
-from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
+from sklearn.base import (
+    BaseEstimator,
+    TransformerMixin,
+    ClassifierMixin,
+    RegressorMixin,
+)
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
@@ -25,16 +30,14 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.compose import ColumnTransformer
 
 
-def compute_error(y_true: np.ndarray,
-                  y_pred: np.ndarray,
-                  mode="regression") -> float:
+def compute_error(y_true: np.ndarray, y_pred: np.ndarray, mode="regression") -> float:
     """
     Computes the mean squared error (MSE) for regression models and the error rate for classification models.
 
     Parameters:
-    - y_true:       The true values of the validation or test data. 
-    - y_pred:       The values predicted by the model. 
-    - mode:         The type of model, regression by default. 
+    - y_true:       The true values of the validation or test data.
+    - y_pred:       The values predicted by the model.
+    - mode:         The type of model, regression by default.
 
     Returns:
     - error_val:    The computed error.
@@ -54,14 +57,15 @@ def compute_error(y_true: np.ndarray,
     return error_val
 
 
-def two_layer_cv(k_out: int,
-                 k_in: int,
-                 models: Iterable,
-                 X: np.ndarray,
-                 y: np.ndarray,
-                 mode="regression",
-                 seed=131125,
-                 ) -> None:
+def two_layer_cv(
+    k_out: int,
+    k_in: int,
+    models: Iterable,
+    X: np.ndarray,
+    y: np.ndarray,
+    mode="regression",
+    seed=131125,
+) -> None:
     """
     Performs two-layer cross-validation for a set of models.
 
@@ -78,7 +82,7 @@ def two_layer_cv(k_out: int,
 
     # initializing folds for outer loop
     kfold_out = KFold(n_splits=k_out, shuffle=True, random_state=seed)
-    
+
     for i, (train_idx, test_idx) in enumerate(kfold_out.split(X)):
         # split into train and test set
         X_train_out, X_test = X[train_idx], X[test_idx]
@@ -92,14 +96,14 @@ def two_layer_cv(k_out: int,
             # split into train and validation set
             X_train_in, X_val = X_train_out[train_idx], X_train_out[val_idx]
             y_train_in, y_val = y_train_out[train_idx], y_train_out[val_idx]
-            
+
             for s, model in enumerate(models):
                 # fit model on train set
                 fitted_model = model.fit(X_train_in, y_train_in)
-                
+
                 # get predictions and compute val error
                 y_pred = fitted_model.predict(X_val)
-                val_error = compute_error(y_val, y_pred, mode=mode) 
+                val_error = compute_error(y_val, y_pred, mode=mode)
 
                 # append results to val_errors dictionary
                 model_name = f"model_{s}"
@@ -125,13 +129,15 @@ def two_layer_cv(k_out: int,
         model_name = best_model.__class__.__name__
 
         # identify relevant parameter and its value
-        param_dict = {"Ridge": ("lambda", params["alpha"]),
-                      "BaselineRegressor": ("-", "-"),
-                      "ANNRegressor": ("h", params["hidden_dim"])}
+        param_dict = {
+            "Ridge": ("lambda", params["alpha"]),
+            "BaselineRegressor": ("-", "-"),
+            "ANNRegressor": ("h", params["hidden_dim"]),
+        }
         param_name, param_val = param_dict[model_name]
 
-        # append results to results dictionary 
-        results["fold"].append(i+1)
+        # append results to results dictionary
+        results["fold"].append(i + 1)
         results["model"].append(model_name)
         results["param_name"].append(param_name)
         results["param_val"].append(param_val)
@@ -141,7 +147,7 @@ def two_layer_cv(k_out: int,
     df = pd.DataFrame.from_dict(results)
 
     # write append results to csv file
-    df.to_csv(f'tlcv_results/{mode}_results.csv', mode='a', index=False, header=False)
+    df.to_csv(f"tlcv_results/{mode}_results.csv", mode="a", index=False, header=False)
 
 
 class LogTransformer(BaseEstimator, TransformerMixin):
@@ -163,43 +169,82 @@ class LogTransformer(BaseEstimator, TransformerMixin):
         return self.columns_
 
 
-class Preprocessor():
+class Preprocessor:
     def __init__(self, task):
         self.task = task
-        assert self.task in {"Classification", "Regression"}, f"Task must equal either 'Classification' or 'Regression', task provided {self.task}"
+        assert self.task in {
+            "classification",
+            "regression",
+        }, f"Task must equal either 'Classification' or 'Regression', task provided {self.task}"
 
-        if self.task == 'Regression':
-            self.COVARIATES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "chd", "famhist"]
+        if self.task == "regression":
+            self.COVARIATES = [
+                "sbp",
+                "tobacco",
+                "ldl",
+                "typea",
+                "alcohol",
+                "age",
+                "chd",
+                "famhist",
+            ]
             self.INDEPENDENT = ["obesity"]
             self.CATEGORICAL_VARIABLES = ["chd", "famhist"]
-            self.CONTINUOUS_VARIABLES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age"]
+            self.CONTINUOUS_VARIABLES = [
+                "sbp",
+                "tobacco",
+                "ldl",
+                "typea",
+                "alcohol",
+                "age",
+            ]
 
-        elif self.task == 'Classification':
-            self.COVARIATES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "obesity", "famhist"]
+        elif self.task == "classification":
+            self.COVARIATES = [
+                "sbp",
+                "tobacco",
+                "ldl",
+                "typea",
+                "alcohol",
+                "age",
+                "obesity",
+                "famhist",
+            ]
             self.INDEPENDENT = ["chd"]
             self.CATEGORICAL_VARIABLES = ["famhist"]
-            self.CONTINUOUS_VARIABLES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "obesity"]
+            self.CONTINUOUS_VARIABLES = [
+                "sbp",
+                "tobacco",
+                "ldl",
+                "typea",
+                "alcohol",
+                "age",
+                "obesity",
+            ]
 
-        self.num_pipeline = Pipeline(steps=[
-        ('log_transform', LogTransformer(["alcohol", "tobacco"])),
-        ('scaler', StandardScaler().set_output(transform='pandas'))
-        ])
+        self.num_pipeline = Pipeline(
+            steps=[
+                ("log_transform", LogTransformer(["alcohol", "tobacco"])),
+                ("scaler", StandardScaler().set_output(transform="pandas")),
+            ]
+        )
 
-        self.cat_pipeline = Pipeline(steps=[
-                ('onehotencoder', OneHotEncoder())
-        ])
-   
-        self.preproc = ColumnTransformer([
-            ("num", self.num_pipeline, self.CONTINUOUS_VARIABLES),
-            ("cat", self.cat_pipeline, self.CATEGORICAL_VARIABLES),
-        ], remainder='passthrough')
-        
+        self.cat_pipeline = Pipeline(steps=[("onehotencoder", OneHotEncoder())])
+
+        self.preproc = ColumnTransformer(
+            [
+                ("num", self.num_pipeline, self.CONTINUOUS_VARIABLES),
+                ("cat", self.cat_pipeline, self.CATEGORICAL_VARIABLES),
+            ],
+            remainder="passthrough",
+        )
+
         return None
 
-    def fit(self, df, y=None):
-        if self.task == 'Regression':
+    def fit(self, df):
+        if self.task == "regression":
             self.preproc.fit(df[self.COVARIATES])
-        elif self.task == 'Classification':
+        elif self.task == "classification":
             self.preproc.fit(df[self.COVARIATES])
         self.is_fitted_ = True
         self.columns_ = self.preproc.get_feature_names_out()
@@ -211,15 +256,15 @@ class Preprocessor():
         X = df_[self.COVARIATES]
         y = df_[self.INDEPENDENT]
 
-        if self.task == 'Regression':
+        if self.task == "regression":
             X_preprocessed = self.preproc.transform(X)
-        elif self.task == 'Classification':
+        elif self.task == "classification":
             X_preprocessed = self.preproc.transform(X)
         return pd.DataFrame(X_preprocessed, columns=self.columns_, index=df_.index), y
 
-
     def get_feature_names_out(self, *args, **params):
         return self.columns_
+
 
 class BaselineRegressor(BaseEstimator, RegressorMixin):
     def __init__(self):
@@ -315,10 +360,14 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
         self.input_dim_ = input_dim
         self.learning_rate_ = learning_rate
         self.model_ = torch.nn.Sequential(
-                torch.nn.Linear(in_features=self.input_dim_, out_features=self.hidden_dim_, bias=True),     # Input layer
-                torch.nn.ReLU(),                                                                # Activation function
-                torch.nn.Linear(in_features=self.hidden_dim_, out_features=2, bias=True),    # Output layer
-                torch.nn.Sigmoid()
+            torch.nn.Linear(
+                in_features=self.input_dim_, out_features=self.hidden_dim_, bias=True
+            ),  # Input layer
+            torch.nn.ReLU(),  # Activation function
+            torch.nn.Linear(
+                in_features=self.hidden_dim_, out_features=2, bias=True
+            ),  # Output layer
+            torch.nn.Sigmoid(),
         )
         self.n_epochs_ = n_epochs
         return None
@@ -367,5 +416,3 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
 
     def get_params(self, deep=False):
         return {"hidden_dim": self.hidden_dim_}
-
-
