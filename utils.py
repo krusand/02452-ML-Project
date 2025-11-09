@@ -1,17 +1,31 @@
 from collections import defaultdict
 from typing import Iterable
 
+import torch
 import numpy as np
+from tqdm import tqdm
+
+
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import KFold
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, RegressorMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
+from sklearn.model_selection import train_test_split
+from sklearn.base import (
+    BaseEstimator,
+    TransformerMixin,
+    ClassifierMixin,
+    RegressorMixin,
+)
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+
+
 def compute_error(y_true: np.ndarray,
                   y_pred: np.ndarray,
                   mode="regression") -> float:
     """
-    Computes the mean squared error (MSE) for regression models and the error rate for classification models. 
+    Computes the mean squared error (MSE) for regression models and the error rate for classification models.
 
     Parameters:
     - y_true:       The true values of the validation or test data. 
@@ -27,31 +41,35 @@ def compute_error(y_true: np.ndarray,
     elif mode == "classification":
         acc = accuracy_score(y_true, y_pred)
         error_val = 1 - acc
-    
+
     else:
-        raise ValueError("The mode parameter should be one of 'regression' or 'classification'.")
+        raise ValueError(
+            "The mode parameter should be one of 'regression' or 'classification'."
+        )
 
     return error_val
 
 
-def two_level_cv(k_out: int, 
-                 k_in: int, 
-                 models: Iterable,
-                 X: np.ndarray,
-                 y: np.ndarray,
-                 mode="regression",
-                 seed=131125) -> dict:  
+def two_layer_cv(
+    k1: int,
+    k2: int,
+    models: Iterable,
+    X: np.ndarray,
+    y: np.ndarray,
+    mode="regression",
+    seed=131125,
+) -> dict:
     """
-    Performs two-layer cross-validation for a set of models. 
+    Performs two-layer cross-validation for a set of models.
 
     Parameters:
     - k_out:    Number of folds in the outer loop.
     - k_in:     Number of folds in the inner loop.
     - models:   Iterable containing the models to compare.
     - X:        Features matrix used for training each model.
-    - y:        Vector containing the output variable for each data point. 
+    - y:        Vector containing the output variable for each data point.
     - mode:     Task performed by the models, either "regression" or "classification".
-    - seed:     Seed used for reproducibility purposes. 
+    - seed:     Seed used for reproducibility purposes.
 
     Returns:
     - results:  Dictionary containing the optimal model (hyperparameter value(s)) and the corresponding test error per iteration of the outer loop.
@@ -120,20 +138,20 @@ def two_level_cv(k_out: int,
 
 
 class LogTransformer(BaseEstimator, TransformerMixin):
-    
+
     def __init__(self, columns_to_transform):
         self.columns_to_transform = columns_to_transform
-    
+
     def fit(self, X, y=None):
         self.columns_ = X.columns
         return self
-    
+
     def transform(self, X):
         X = X.copy()
         for col in self.columns_to_transform:
-            X[col] = np.log(X[col] + 1/100000)
+            X[col] = np.log(X[col] + 1 / 100000)
         return X
-    
+
     def get_feature_names_out(self, *args, **params):
         return self.columns_
 
@@ -141,13 +159,13 @@ class LogTransformer(BaseEstimator, TransformerMixin):
 class BaselineRegressor(BaseEstimator, RegressorMixin):
     def __init__(self):
         return None
-    
+
     def fit(self, X, y):
         # Store training info
         self.n_features_in_ = X.shape[1]
-        self.is_fitted_ = True
         self.baseline_value = y.mean()
         self.columns_ = X.columns
+        self.is_fitted_ = True
         return self
 
     def predict(self, X):
@@ -155,7 +173,132 @@ class BaselineRegressor(BaseEstimator, RegressorMixin):
         check_is_fitted(self)
 
         return np.repeat(self.baseline_value, X.shape[0])
-        
+
     def get_feature_names_out(self, *args, **params):
         return self.columns_
 
+    def get_params(self, deep=False):
+        return {"Baseline": "None"}
+
+
+class ANNRegressor(BaseEstimator, RegressorMixin):
+    def __init__(self, input_dim, hidden_dim, n_epochs=1000, learning_rate=1e-5):
+        self.hidden_dim_ = hidden_dim
+        self.input_dim_ = input_dim
+        self.learning_rate_ = learning_rate
+        self.model_ = torch.nn.Sequential(
+            torch.nn.Linear(
+                in_features=self.input_dim_, out_features=self.hidden_dim_, bias=True
+            ),  # Input layer
+            torch.nn.Tanh(),  # Activation function
+            torch.nn.Linear(
+                in_features=self.hidden_dim_, out_features=1, bias=True
+            ),  # Output layer
+        )
+        self.n_epochs_ = n_epochs
+        return None
+
+    def fit(self, X, y, verbose=True):
+
+        self.n_features_in_ = X.shape[1]
+        self.columns_ = X.columns
+
+        assert (
+            self.n_features_in_ == self.input_dim_
+        ), f"Number of columns in data {self.n_features_in_} must equal number of nodes in first layer of ANN {self.input_dim_}"
+
+        self.losses = []
+        self.criterion = torch.nn.MSELoss()
+        self.optimizer = torch.optim.SGD(
+            params=self.model_.parameters(), lr=self.learning_rate_
+        )
+
+        for epoch in tqdm(range(self.n_epochs_) if verbose else range(self.n_epochs_)):
+            self.model_.train()
+            outputs = self.model_(torch.tensor(X.to_numpy()).float()).reshape(-1)
+            loss = self.criterion(outputs, torch.tensor(y.to_numpy()).float())
+
+            self.optimizer.zero_grad()
+
+            loss.backward()
+
+            self.optimizer.step()
+
+            self.losses.append(loss.item())
+
+        self.is_fitted_ = True
+
+        return self
+
+    def predict(self, X):
+        check_is_fitted(self)
+        with torch.no_grad():
+            self.model_.eval()
+            y_hat = self.model_(torch.tensor(X.to_numpy()).float())
+        return y_hat
+
+    def get_feature_names_out(self, *args, **params):
+        return self.columns_
+
+    def get_params(self, deep=False):
+        return {"hidden_dim": self.hidden_dim_}
+
+
+class ANNClassifier(BaseEstimator, ClassifierMixin):
+    def __init__(self, input_dim, hidden_dim, n_epochs=1000, learning_rate=1e-5):
+        self.hidden_dim_ = hidden_dim
+        self.input_dim_ = input_dim
+        self.learning_rate_ = learning_rate
+        self.model_ = torch.nn.Sequential(
+                torch.nn.Linear(in_features=self.input_dim_, out_features=self.hidden_dim_, bias=True),     # Input layer
+                torch.nn.ReLU(),                                                                # Activation function
+                torch.nn.Linear(in_features=self.hidden_dim_, out_features=2, bias=True),    # Output layer
+                torch.nn.Sigmoid()
+        )
+        self.n_epochs_ = n_epochs
+        return None
+
+    def fit(self, X, y, verbose=True):
+
+        self.n_features_in_ = X.shape[1]
+        self.columns_ = X.columns
+
+        assert (
+            self.n_features_in_ == self.input_dim_
+        ), f"Number of columns in data {self.n_features_in_} must equal number of nodes in first layer of ANN {self.input_dim_}"
+
+        self.losses = []
+        self.criterion = torch.nn.BCELoss()
+        self.optimizer = torch.optim.SGD(
+            params=self.model_.parameters(), lr=self.learning_rate_
+        )
+
+        for epoch in tqdm(range(self.n_epochs_) if verbose else range(self.n_epochs_)):
+            self.model_.train()
+            outputs = self.model_(torch.tensor(X.to_numpy()).float()).reshape(-1)
+            loss = self.criterion(outputs, torch.tensor(y.to_numpy()).float())
+
+            self.optimizer.zero_grad()
+
+            loss.backward()
+
+            self.optimizer.step()
+
+            self.losses.append(loss.item())
+
+        self.is_fitted_ = True
+
+        return self
+
+    def predict(self, X):
+        check_is_fitted(self)
+        with torch.no_grad():
+            self.model_.eval()
+            y_hat = self.model_(torch.tensor(X.to_numpy()).float())
+        return y_hat
+
+    def get_feature_names_out(self, *args, **params):
+        return self.columns_
+
+    def get_params(self, deep=False):
+        return {"hidden_dim": self.hidden_dim_}
