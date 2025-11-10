@@ -5,7 +5,7 @@ from utils import two_layer_cv, BaselineRegressor, ANNRegressor, Preprocessor, B
 
 # hyperparameter values to test
 hds = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-lams = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5]
+lams = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
 
 # regression models to compare
 models_list_reg = [[ANNRegressor(hidden_dim=hd, verbose=False) for hd in hds],
