@@ -29,6 +29,8 @@ from sklearn.base import (
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.compose import ColumnTransformer
 
+BASE_CONT_VARIABLES = ["sbp","tobacco","ldl","typea","alcohol","age","adiposity"]
+BASE_CAT_VARIABLES = ["chd", "famhist"]
 
 def compute_error(y_true: np.ndarray, y_pred: np.ndarray, mode="regression") -> float:
     """
@@ -170,8 +172,35 @@ class LogTransformer(BaseEstimator, TransformerMixin):
         return self.columns_
 
 
+class ModifiedLabelEncoder(BaseEstimator, TransformerMixin):
+
+    def __init__(self, columns_to_transform):
+        self.columns_to_transform = columns_to_transform
+        self.LabelEncoderDict = {
+            f"{col}": LabelEncoder() for col in self.columns_to_transform
+        }
+
+    def fit(self, X, y=None):
+        self.columns_ = X.columns
+        for col in self.columns_to_transform:
+            self.LabelEncoderDict[col].fit(X[col])
+        return self
+
+    def transform(self, X):
+        X = X.copy()
+        for col in self.columns_to_transform:
+            X[col] = self.LabelEncoderDict[col].transform(X[col])
+        return X
+    
+    def fit_transform(self, X, y = None, **fit_params):
+        return super().fit_transform(X, y, **fit_params)
+
+    def get_feature_names_out(self, *args, **params):
+        return self.columns_
+
+
 class Preprocessor:
-    def __init__(self, task):
+    def __init__(self, task, covariates = None, independent = None):
         self.task = task
         assert self.task in {
             "classification",
@@ -179,49 +208,18 @@ class Preprocessor:
         }, f"Task must equal either 'classification' or 'regression', task provided {self.task}"
 
         if self.task == "regression":
-            self.COVARIATES = [
-                "sbp",
-                "tobacco",
-                "ldl",
-                "typea",
-                "alcohol",
-                "age",
-                "chd",
-                "famhist",
-            ]
-            self.INDEPENDENT = ["obesity"]
-            self.CATEGORICAL_VARIABLES = ["chd", "famhist"]
-            self.CONTINUOUS_VARIABLES = [
-                "sbp",
-                "tobacco",
-                "ldl",
-                "typea",
-                "alcohol",
-                "age",
-            ]
+            self.COVARIATES = covariates if covariates is not None else [ "sbp", "tobacco", "ldl", "typea", "alcohol", "age", "chd", "famhist", "adiposity"]
+            self.INDEPENDENT = independent if independent is not None else ["obesity"]
+            self.CATEGORICAL_VARIABLES = list(set(BASE_CAT_VARIABLES).intersection(self.COVARIATES))
+            self.CONTINUOUS_VARIABLES = list(set(BASE_CONT_VARIABLES).intersection(self.COVARIATES))
 
         elif self.task == "classification":
-            self.COVARIATES = [
-                "sbp",
-                "tobacco",
-                "ldl",
-                "typea",
-                "alcohol",
-                "age",
-                "obesity",
-                "famhist",
-            ]
-            self.INDEPENDENT = ["chd"]
-            self.CATEGORICAL_VARIABLES = ["famhist"]
-            self.CONTINUOUS_VARIABLES = [
-                "sbp",
-                "tobacco",
-                "ldl",
-                "typea",
-                "alcohol",
-                "age",
-                "obesity",
-            ]
+            self.COVARIATES = covariates if covariates is not None else ["sbp","tobacco","ldl","typea","alcohol","age","obesity","famhist"]
+            self.INDEPENDENT = independent if independent is not None else ["chd"]
+            self.CATEGORICAL_VARIABLES = list(set(BASE_CAT_VARIABLES).intersection(self.COVARIATES))
+            self.CONTINUOUS_VARIABLES = list(set(BASE_CONT_VARIABLES).intersection(self.COVARIATES))
+
+
 
         self.num_pipeline = Pipeline(
             steps=[
@@ -230,7 +228,9 @@ class Preprocessor:
             ]
         )
 
-        self.cat_pipeline = Pipeline(steps=[("onehotencoder", OneHotEncoder())])
+        self.cat_pipeline = Pipeline(
+            steps=[("labelencoder", ModifiedLabelEncoder(["chd", "famhist"]))]
+        )
 
         self.preproc = ColumnTransformer(
             [
@@ -323,7 +323,9 @@ class BaselineClassifier(BaseEstimator, ClassifierMixin):
 
 
 class ANNRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, hidden_dim, input_dim=10, n_epochs=1000, learning_rate=1e-5, verbose=True):
+    def __init__(
+        self, hidden_dim, input_dim=10, n_epochs=1000, learning_rate=1e-5, verbose=True
+    ):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
         self.learning_rate_ = learning_rate
@@ -358,7 +360,9 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
         for epoch in range(self.n_epochs_):
             self.model_.train()
             outputs = self.model_(torch.tensor(X.to_numpy()).float()).reshape(-1)
-            loss = self.criterion(outputs, torch.tensor(y.to_numpy()).float().reshape(-1))
+            loss = self.criterion(
+                outputs, torch.tensor(y.to_numpy()).float().reshape(-1)
+            )
 
             self.optimizer.zero_grad()
 
@@ -387,7 +391,9 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
 
 
 class ANNClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, hidden_dim, input_dim=9, n_epochs=1000, learning_rate=1e-5, verbose=True):
+    def __init__(
+        self, hidden_dim, input_dim=9, n_epochs=1000, learning_rate=1e-5, verbose=True
+    ):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
         self.learning_rate_ = learning_rate
@@ -449,12 +455,14 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
 
     def get_params(self, deep=False):
         return {"hidden_dim": self.hidden_dim_}
-    
 
-def performance_diff_test(mode, model_1, model_2, X, y, K=10, conf_level=0.95, seed=131125) -> Tuple[float, float, float]:
+
+def performance_diff_test(
+    mode, model_1, model_2, X, y, K=10, conf_level=0.95, seed=131125
+) -> Tuple[float, float, float]:
     """
-    When mode=regression: Performs a paired t-test to assess whether the difference in performance between two regression models is significant. 
-    When mode=classification: Performs McNemar's test to assess whether the difference in performance between two classification models is significant. 
+    When mode=regression: Performs a paired t-test to assess whether the difference in performance between two regression models is significant.
+    When mode=classification: Performs McNemar's test to assess whether the difference in performance between two classification models is significant.
 
     Parameters:
     - mode: Specifies the model types, either regression or classification.
@@ -467,8 +475,8 @@ def performance_diff_test(mode, model_1, model_2, X, y, K=10, conf_level=0.95, s
 
     Returns:
     - p_val: The p-value associated with the null hypothesis stating that there is no difference in performance between model_1 and model_2.
-    - lower: The lower bound of the confidence interval.
-    - upper: The upper bound of the confidence interval. 
+    - lower: The lower b ound of the confidence interval.
+    - upper: The upper bound of the confidence interval.
     """
     # dictionary to contain results per fold
     fold_results = defaultdict(list)
@@ -492,23 +500,24 @@ def performance_diff_test(mode, model_1, model_2, X, y, K=10, conf_level=0.95, s
         # compute difference in squared error for regression or agreements/disagreements for classification
         if mode == "regression":
             # computing sum of difference in squared losses
-            z_1 = (pred_1 - y_test)**2
-            z_2 = (pred_2 - y_test)**2
+            z_1 = (pred_1 - y_test) ** 2
+            z_2 = (pred_2 - y_test) ** 2
             z = np.sum(z_1 - z_2)
 
             # adding result to fold_results
             fold_results["z"].append(z)
-        
+
         elif mode == "classification":
             # computing agreements and disagreements
             model_1_binary = pred_1 == y_test
             model_2_binary = pred_2 == y_test
-        
-        else: 
-            raise ValueError("mode parameter should be either 'regression' or 'classification'.")
-        
+
+        else:
+            raise ValueError(
+                "mode parameter should be either 'regression' or 'classification'."
+            )
+
         # adding fold number to fold_results
         fold_results["fold"].append(i)
 
     return p_val, lower, upper
-
