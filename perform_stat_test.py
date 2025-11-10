@@ -1,0 +1,40 @@
+import pandas as pd
+import sklearn.linear_model as lm
+
+from utils import BaselineRegressor, ANNRegressor, Preprocessor, BaselineClassifier, ANNClassifier, performance_diff_test
+
+# regression models
+base_reg = BaselineRegressor()
+lin_reg = lm.Ridge(alpha=50)
+ann_reg = ANNRegressor(hidden_dim=50)
+
+# classification models
+base_clf = BaselineClassifier()
+log_reg_clf = lm.LogisticRegression(penalty="l2", C=1/10)
+ann_clf = ANNClassifier(hidden_dim=50)
+
+# loading the data
+df = pd.read_csv("data/heartDisease.csv")
+
+# preprocessing data for regression
+PreProp_reg = Preprocessor(task="regression")
+PreProp_reg.fit(df)
+X_reg, y_reg = PreProp_reg.transform(df)
+
+# regression model comparisons
+model_comparisons_reg = [(lin_reg, base_reg)]
+
+for m1, m2 in model_comparisons_reg:
+    p_val, lower, upper = performance_diff_test(mode="regression", model_1=m1, model_2=m2, X=X_reg, y=y_reg)
+print(f"p_val: {p_val}")
+print(f"CI: [{lower:.3f}, {upper:.3f}]")
+# preprocessing data for classification
+PreProp_clf = Preprocessor(task="classification")
+PreProp_clf.fit(df)
+X_clf, y_clf = PreProp_clf.transform(df)
+
+# classification model comparisons
+model_comparisons_clf = [(log_reg_clf, ann_clf)]
+
+# for m1, m2 in model_comparisons_clf:
+#     p_val, lower, upper = performance_diff_test(mode="classification", model_1=m1, model_2=m2, X=X_clf, y=y_clf)
