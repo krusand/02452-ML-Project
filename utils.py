@@ -29,8 +29,9 @@ from sklearn.base import (
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.compose import ColumnTransformer
 
-BASE_CONT_VARIABLES = ["sbp","tobacco","ldl","typea","alcohol","age","adiposity"]
+BASE_CONT_VARIABLES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "adiposity"]
 BASE_CAT_VARIABLES = ["chd", "famhist"]
+
 
 def compute_error(y_true: np.ndarray, y_pred: np.ndarray, mode="regression") -> float:
     """
@@ -191,8 +192,8 @@ class ModifiedLabelEncoder(BaseEstimator, TransformerMixin):
         for col in self.columns_to_transform:
             X[col] = self.LabelEncoderDict[col].transform(X[col])
         return X
-    
-    def fit_transform(self, X, y = None, **fit_params):
+
+    def fit_transform(self, X, y=None, **fit_params):
         return super().fit_transform(X, y, **fit_params)
 
     def get_feature_names_out(self, *args, **params):
@@ -200,7 +201,7 @@ class ModifiedLabelEncoder(BaseEstimator, TransformerMixin):
 
 
 class Preprocessor:
-    def __init__(self, task, covariates = None, independent = None):
+    def __init__(self, task, covariates=None, independent=None):
         self.task = task
         assert self.task in {
             "classification",
@@ -208,18 +209,51 @@ class Preprocessor:
         }, f"Task must equal either 'classification' or 'regression', task provided {self.task}"
 
         if self.task == "regression":
-            self.COVARIATES = covariates if covariates is not None else [ "sbp", "tobacco", "ldl", "typea", "alcohol", "age", "chd", "famhist", "adiposity"]
+            self.COVARIATES = (
+                covariates
+                if covariates is not None
+                else [
+                    "sbp",
+                    "tobacco",
+                    "ldl",
+                    "typea",
+                    "alcohol",
+                    "age",
+                    "chd",
+                    "famhist",
+                    "adiposity",
+                ]
+            )
             self.INDEPENDENT = independent if independent is not None else ["obesity"]
-            self.CATEGORICAL_VARIABLES = list(set(BASE_CAT_VARIABLES).intersection(self.COVARIATES))
-            self.CONTINUOUS_VARIABLES = list(set(BASE_CONT_VARIABLES).intersection(self.COVARIATES))
+            self.CATEGORICAL_VARIABLES = list(
+                set(BASE_CAT_VARIABLES).intersection(self.COVARIATES)
+            )
+            self.CONTINUOUS_VARIABLES = list(
+                set(BASE_CONT_VARIABLES).intersection(self.COVARIATES)
+            )
 
         elif self.task == "classification":
-            self.COVARIATES = covariates if covariates is not None else ["sbp","tobacco","ldl","typea","alcohol","age","obesity","famhist"]
+            self.COVARIATES = (
+                covariates
+                if covariates is not None
+                else [
+                    "sbp",
+                    "tobacco",
+                    "ldl",
+                    "typea",
+                    "alcohol",
+                    "age",
+                    "obesity",
+                    "famhist",
+                ]
+            )
             self.INDEPENDENT = independent if independent is not None else ["chd"]
-            self.CATEGORICAL_VARIABLES = list(set(BASE_CAT_VARIABLES).intersection(self.COVARIATES))
-            self.CONTINUOUS_VARIABLES = list(set(BASE_CONT_VARIABLES).intersection(self.COVARIATES))
-
-
+            self.CATEGORICAL_VARIABLES = list(
+                set(BASE_CAT_VARIABLES).intersection(self.COVARIATES)
+            )
+            self.CONTINUOUS_VARIABLES = list(
+                set(BASE_CONT_VARIABLES).intersection(self.COVARIATES)
+            )
 
         self.num_pipeline = Pipeline(
             steps=[
@@ -381,7 +415,7 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
         with torch.no_grad():
             self.model_.eval()
             y_hat = self.model_(torch.tensor(X.to_numpy()).float())
-        return y_hat
+        return y_hat.detach().numpy().reshape(-1)
 
     def get_feature_names_out(self, *args, **params):
         return self.columns_
@@ -448,7 +482,7 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
             logits = self.model_(torch.tensor(X.to_numpy()).float())
             probs = torch.softmax(logits, dim=1)
             y_hat = np.argmax(probs, axis=1).unsqueeze(1)
-        return y_hat
+        return y_hat.detach().numpy().reshape(-1)
 
     def get_feature_names_out(self, *args, **params):
         return self.columns_
