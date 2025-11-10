@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Iterable
+from typing import Iterable, Tuple
 
 import numpy as np
 import pandas as pd
@@ -449,3 +449,66 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
 
     def get_params(self, deep=False):
         return {"hidden_dim": self.hidden_dim_}
+    
+
+def performance_diff_test(mode, model_1, model_2, X, y, K=10, conf_level=0.95, seed=131125) -> Tuple[float, float, float]:
+    """
+    When mode=regression: Performs a paired t-test to assess whether the difference in performance between two regression models is significant. 
+    When mode=classification: Performs McNemar's test to assess whether the difference in performance between two classification models is significant. 
+
+    Parameters:
+    - mode: Specifies the model types, either regression or classification.
+    - model_1: The first model to be compared.
+    - model_2: The second model to be compared.
+    - X: Features to be used as input to the models.
+    - y: Labels to be used as input to the models.
+    - K: K used for K-fold cross-validation.
+    - conf_level: Confidence level for confidence interval.
+
+    Returns:
+    - p_val: The p-value associated with the null hypothesis stating that there is no difference in performance between model_1 and model_2.
+    - lower: The lower bound of the confidence interval.
+    - upper: The upper bound of the confidence interval. 
+    """
+    # dictionary to contain results per fold
+    fold_results = defaultdict(list)
+
+    # initializing folds for outer loop
+    kfold_out = KFold(n_splits=K, shuffle=True, random_state=seed)
+
+    for i, (train_idx, test_idx) in enumerate(kfold_out.split(X)):
+        # define train and test set for fold
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+        # fit models
+        fitted_model_1 = model_1.fit(X_train, y_train)
+        fitted_model_2 = model_2.fit(X_train, y_train)
+
+        # get predictions
+        pred_1 = fitted_model_1.predict(X_test)
+        pred_2 = fitted_model_2.predict(X_test)
+
+        # compute difference in squared error for regression or agreements/disagreements for classification
+        if mode == "regression":
+            # computing sum of difference in squared losses
+            z_1 = (pred_1 - y_test)**2
+            z_2 = (pred_2 - y_test)**2
+            z = np.sum(z_1 - z_2)
+
+            # adding result to fold_results
+            fold_results["z"].append(z)
+        
+        elif mode == "classification":
+            # computing agreements and disagreements
+            model_1_binary = pred_1 == y_test
+            model_2_binary = pred_2 == y_test
+        
+        else: 
+            raise ValueError("mode parameter should be either 'regression' or 'classification'.")
+        
+        # adding fold number to fold_results
+        fold_results["fold"].append(i)
+
+    return p_val, lower, upper
+
