@@ -3,6 +3,7 @@ from typing import Iterable, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy.stats import beta, binom, t
 import torch
 from tqdm import tqdm
 
@@ -449,7 +450,7 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
 
     def get_params(self, deep=False):
         return {"hidden_dim": self.hidden_dim_}
-    
+
 
 def performance_diff_test(mode, model_1, model_2, X, y, K=10, conf_level=0.95, seed=131125) -> Tuple[float, float, float]:
     """
@@ -473,6 +474,9 @@ def performance_diff_test(mode, model_1, model_2, X, y, K=10, conf_level=0.95, s
     # dictionary to contain results per fold
     fold_results = defaultdict(list)
 
+    # initializing number of test objects
+    n = 0
+
     # initializing folds for outer loop
     kfold_out = KFold(n_splits=K, shuffle=True, random_state=seed)
 
@@ -480,6 +484,9 @@ def performance_diff_test(mode, model_1, model_2, X, y, K=10, conf_level=0.95, s
         # define train and test set for fold
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+
+        # adding to the value of test objects
+        n += len(y_test)
 
         # fit models
         fitted_model_1 = model_1.fit(X_train, y_train)
@@ -491,24 +498,86 @@ def performance_diff_test(mode, model_1, model_2, X, y, K=10, conf_level=0.95, s
 
         # compute difference in squared error for regression or agreements/disagreements for classification
         if mode == "regression":
-            # computing sum of difference in squared losses
+            # computing difference in squared losses
             z_1 = (pred_1 - y_test)**2
             z_2 = (pred_2 - y_test)**2
-            z = np.sum(z_1 - z_2)
+            z = z_1 - z_2
 
-            # adding result to fold_results
-            fold_results["z"].append(z)
+            for diff in z:
+                # adding result to fold_results
+                fold_results["z"].append(diff)
         
         elif mode == "classification":
             # computing agreements and disagreements
             model_1_binary = pred_1 == y_test
             model_2_binary = pred_2 == y_test
-        
+
+            # initializing agreement/disagreement counts
+            n_11 = 0   # both models are right
+            n_12 = 0   # model_1 is right and model_2 is wrong
+            n_21 = 0   # model_1 is wrong and model_2 is right
+            n_22 = 0   # both models are wrong
+
+            # checking which model(s) is right and wrong
+            for val_1, val_2 in (model_1_binary, model_2_binary):
+                if val_1 == 1 and val_2 == 1:
+                    n_11 += 1
+                elif val_1 == 1 and val_2 == 0:
+                    n_12 += 1
+                elif val_1 == 0 and val_2 == 1:
+                    n_21 += 1
+                else:
+                    n_22 += 1
+            
+            # adding counts to fold_results
+            fold_results["n_11"].append(n_11)
+            fold_results["n_12"].append(n_12)
+            fold_results["n_21"].append(n_21)
+            fold_results["n_22"].append(n_22)
+
         else: 
             raise ValueError("mode parameter should be either 'regression' or 'classification'.")
         
         # adding fold number to fold_results
-        fold_results["fold"].append(i)
+        fold_results["fold"].append(i)   # delete if not using this key
+
+    # compute p-value and confidence interval bounds
+    alpha = 1 - conf_level
+
+    if mode == "regression":
+        # vector containing all z_i values
+        z_i = fold_results["z"]
+
+        # average z_i value (eq 11.52c in the ML book)
+        z_hat = np.mean(z_i)
+
+        # empirical standard deviation (eq 11.52c in the ML book)
+        emp_std = (1 / n*(n-1)) * np.sum([(z - z_hat)**2 for z in z_i])
+
+        # computing the p-value (eq 11.53 in the ML book)
+        p_val = 2 * t.cdf(x=-abs(z_hat), df=n-1, loc=0, scale=emp_std)
+
+        # computing the lower and upper bound for the confidence interval (eq 11.52a and 11.52b in the ML book)
+        lower, upper = t.ppf(q=[alpha/2, 1-alpha/2], df=n-1, loc=z_hat, scale=emp_std)
+
+    elif mode == "classification":
+        # computing preliminary variables
+        n_12 = np.sum(fold_results["n_12"])
+        n_21 = np.sum(fold_results["n_21"])
+        m = np.min(n_12, n_21)
+        E_theta = (n_12 - n_21) / n
+        Q_numerator = n**2 * (n+1) * (E_theta + 1) * (1 - E_theta)
+        Q_denominator = n * (n_12 + n_21) - (n_12 - n_21)**2
+        Q = Q_numerator / Q_denominator
+        f = ((E_theta + 1) * (Q - 1)) / 2
+        g = ((1 - E_theta) * (Q - 1)) / 2
+
+        # computing the p-value (eq 11.36 in the ML book)
+        p_val = 2 * binom.cdf(k=m, n=n_12+n_21, p=0.5)
+
+        # computing the lower and upper bound for the confidence interval (eq 11.35a and 11.35b in the ML book)
+        lower = beta.ppf(q=alpha/2, a=f, b=g) - 1
+        upper = beta.ppf(q=1-alpha/2, a=f, b=g) - 1
 
     return p_val, lower, upper
 
