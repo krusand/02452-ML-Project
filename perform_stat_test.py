@@ -14,6 +14,8 @@ reg_ann_h_parameter = regression_results_grouped[(regression_results_grouped["mo
 clf_logistic_lam_parameter = classification_results_grouped[(classification_results_grouped["model"] == "LogisticRegression") & (classification_results_grouped["param_name"] == "lambda")]["param_val"].values[0]
 clf_ann_h_parameter = classification_results_grouped[(classification_results_grouped["model"] == "ANNClassifier") & (classification_results_grouped["param_name"] == "h")]["param_val"].values[0]
 
+clf_cv_seed_used = int(classification_results["cv_seed_used"].drop_duplicates().values[0])
+reg_cv_seed_used = int(regression_results["cv_seed_used"].drop_duplicates().values[0])
 
 # regression models
 base_reg = BaselineRegressor()
@@ -37,7 +39,7 @@ X_reg, y_reg = PreProp_reg.transform(df)
 model_comparisons_reg = [(lin_reg, base_reg)]
 
 for m1, m2 in model_comparisons_reg:
-    p_val, lower, upper = performance_diff_test(mode="regression", model_1=m1, model_2=m2, X=X_reg, y=y_reg)
+    p_val, lower, upper = performance_diff_test(mode="regression", model_1=m1, model_2=m2, X=X_reg, y=y_reg, seed=reg_cv_seed_used)
 print(f"p_val: {p_val}")
 print(f"CI: [{lower:.3f}, {upper:.3f}]")
 # preprocessing data for classification
@@ -49,4 +51,4 @@ X_clf, y_clf = PreProp_clf.transform(df)
 model_comparisons_clf = [(log_reg_clf, ann_clf)]
 
 # for m1, m2 in model_comparisons_clf:
-#     p_val, lower, upper = performance_diff_test(mode="classification", model_1=m1, model_2=m2, X=X_clf, y=y_clf)
+#     p_val, lower, upper = performance_diff_test(mode="classification", model_1=m1, model_2=m2, X=X_clf, y=y_clf, seed=clf_cv_seed_used)
