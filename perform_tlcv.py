@@ -1,20 +1,22 @@
 import pandas as pd
 import sklearn.linear_model as lm
+import numpy as np
 
 from utils import two_layer_cv, BaselineRegressor, ANNRegressor, Preprocessor, BaselineClassifier, ANNClassifier
 
 # hyperparameter values to test
 hds = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-lams = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+lams = np.logspace(np.log10(1e-5), np.log10(1e3), num=200)
+
 
 # regression models to compare
-models_list_reg = [[ANNRegressor(hidden_dim=hd, verbose=False) for hd in hds],
+models_list_reg = [[ANNRegressor(input_dim=8,hidden_dim=hd, verbose=False) for hd in hds],
                    [BaselineRegressor()], 
                    [lm.Ridge(alpha=a) for a in lams],
                    ]
 
 # classification models to compare
-models_list_clf = [[ANNClassifier(hidden_dim=hd, verbose=False) for hd in hds],
+models_list_clf = [[ANNClassifier(input_dim=8,hidden_dim=hd, verbose=False) for hd in hds],
                    [BaselineClassifier()], 
                    [lm.LogisticRegression(penalty="l2", C=1/lam) for lam in lams],
                    ]
@@ -23,7 +25,7 @@ models_list_clf = [[ANNClassifier(hidden_dim=hd, verbose=False) for hd in hds],
 df = pd.read_csv("data/heartDisease.csv")
 
 # preprocessing data for regression
-PreProp_reg = Preprocessor(task="regression")
+PreProp_reg = Preprocessor(task="regression", covariates=["sbp","tobacco","ldl","typea","alcohol","age","chd","famhist"])
 PreProp_reg.fit(df)
 X_reg, y_reg = PreProp_reg.transform(df)
 
