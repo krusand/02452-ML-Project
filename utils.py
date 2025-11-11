@@ -87,7 +87,7 @@ def two_layer_cv(
     # initializing folds for outer loop
     kfold_out = KFold(n_splits=k_out, shuffle=True, random_state=seed)
 
-    for i, (train_idx, test_idx) in enumerate(kfold_out.split(X)):
+    for i, (train_idx, test_idx) in enumerate(tqdm(kfold_out.split(X), total=k_out)):
         # split into train and test set
         X_train_out, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train_out, y_test = y.iloc[train_idx], y.iloc[test_idx]
@@ -388,7 +388,7 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
 
         self.losses = []
         self.criterion = torch.nn.MSELoss()
-        self.optimizer = torch.optim.SGD(
+        self.optimizer = torch.optim.Adam(
             params=self.model_.parameters(), lr=self.learning_rate_
         )
 
@@ -455,7 +455,7 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
 
         self.losses = []
         self.criterion = torch.nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(
+        self.optimizer = torch.optim.Adam(
             params=self.model_.parameters(), lr=self.learning_rate_
         )
 
