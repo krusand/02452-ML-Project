@@ -9,25 +9,17 @@ from tqdm import tqdm
 
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import KFold
-from sklearn.base import (
-    BaseEstimator,
-    TransformerMixin,
-    ClassifierMixin,
-    RegressorMixin,
-)
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
+from sklearn.utils.validation import check_is_fitted
 
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
 from sklearn.base import (
     BaseEstimator,
     TransformerMixin,
     ClassifierMixin,
     RegressorMixin,
 )
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.compose import ColumnTransformer
 
 BASE_CONT_VARIABLES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "adiposity", "obesity"]
@@ -65,10 +57,11 @@ def two_layer_cv(
     k_out: int,
     k_in: int,
     models: Iterable,
-    X: np.ndarray,
-    y: np.ndarray,
+    df: pd.DataFrame,
     mode="regression",
     seed=131125,
+    features: list[str] | None = None,
+    outcome: list[str] | None = None
 ) -> None:
     """
     Performs two-layer cross-validation for a set of models.
@@ -77,8 +70,7 @@ def two_layer_cv(
     - k_out:    Number of folds in the outer loop.
     - k_in:     Number of folds in the inner loop.
     - models:   Iterable containing the models to compare.
-    - X:        Features matrix used for training each model.
-    - y:        Vector containing the output variable for each data point.
+    - df:       Features and outcome
     - mode:     Task performed by the models, either "regression" or "classification".
     - seed:     Seed used for reproducibility purposes.
     """
@@ -87,19 +79,23 @@ def two_layer_cv(
     # initializing folds for outer loop
     kfold_out = KFold(n_splits=k_out, shuffle=True, random_state=seed)
 
-    for i, (train_idx, test_idx) in enumerate(tqdm(kfold_out.split(X), total=k_out)):
-        # split into train and test set
-        X_train_out, X_test = X.iloc[train_idx], X.iloc[test_idx]
-        y_train_out, y_test = y.iloc[train_idx], y.iloc[test_idx]
+    for i, (train_idx, test_idx) in enumerate(tqdm(kfold_out.split(df), total=k_out)):
+        df_train_out = df.iloc[train_idx]
+        df_test_out = df.iloc[test_idx]
+
         val_errors = defaultdict(list)
 
         # initializing folds for inner loop
         kfold_in = KFold(n_splits=k_in, shuffle=True, random_state=seed)
 
-        for _, (train_idx, val_idx) in enumerate(kfold_in.split(X_train_out)):
-            # split into train and validation set
-            X_train_in, X_val = X_train_out.iloc[train_idx], X_train_out.iloc[val_idx]
-            y_train_in, y_val = y_train_out.iloc[train_idx], y_train_out.iloc[val_idx]
+        for _, (train_idx, val_idx) in enumerate(kfold_in.split(df_train_out)):
+            df_train_in = df_train_out.iloc[train_idx]
+            df_val = df_train_out.iloc[val_idx]
+
+            # fit pipeline only on training
+            preprocessor_in = Preprocessor(task=mode, covariates=features, independent=outcome)
+            X_train_in, y_train_in = preprocessor_in.fit_transform(df_train_in)
+            X_val, y_val = preprocessor_in.transform(df_val)
 
             for s, model in enumerate(models):
                 # fit model on train set
@@ -120,6 +116,11 @@ def two_layer_cv(
         best_model_name = min(averages, key=averages.get)
         best_model_idx = int(best_model_name.split("_")[1])
         best_model = models[best_model_idx]
+        
+        # fit pipeline only on training
+        preprocessor_out = Preprocessor(task=mode, covariates=features, independent=outcome)
+        X_train_out, y_train_out = preprocessor_out.fit_transform(df_train_out)
+        X_test, y_test = preprocessor_out.transform(df_test_out)
 
         # train best model on X_train_out and y_train_out
         fitted_model = best_model.fit(X_train_out, y_train_out)
@@ -360,7 +361,7 @@ class BaselineClassifier(BaseEstimator, ClassifierMixin):
 
 class ANNRegressor(BaseEstimator, RegressorMixin):
     def __init__(
-        self, hidden_dim, input_dim=10, n_epochs=1000, learning_rate=1e-5, verbose=True
+        self, hidden_dim, input_dim=10, n_epochs=10_000, learning_rate=1e-5, verbose=True
     ):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
@@ -428,7 +429,7 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
 
 class ANNClassifier(BaseEstimator, ClassifierMixin):
     def __init__(
-        self, hidden_dim, input_dim=9, n_epochs=1000, learning_rate=1e-5, verbose=True
+        self, hidden_dim, input_dim=9, n_epochs=10_000, learning_rate=1e-5, verbose=True
     ):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
