@@ -585,7 +585,7 @@ def performance_diff_test(
             fold_results["n_12"].append(n_12)
             fold_results["n_21"].append(n_21)
             fold_results["n_22"].append(n_22)
-            
+
         # adding fold number to fold_results
         fold_results["fold"].append(i)   # delete if not using this key
 
@@ -603,7 +603,7 @@ def performance_diff_test(
         emp_std = (1 / n*(n-1)) * np.sum([(z_val - z_hat)**2 for z_val in z])
 
         # computing the p-value (eq 11.53 in the ML book)
-        p_val = 2 * t.cdf(x=-abs(z_hat), df=n-1, loc=0, scale=emp_std)
+        p_val = 2 * t.cdf(x=-abs(z_hat), df=n-1, loc=0, scale=np.sqrt(emp_std))
 
         # computing the lower and upper bound for the confidence interval (eq 11.52a and 11.52b in the ML book)
         lower, upper = t.ppf(q=[alpha/2, 1-alpha/2], df=n-1, loc=z_hat, scale=emp_std)
