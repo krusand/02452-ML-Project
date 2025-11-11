@@ -562,23 +562,12 @@ def performance_diff_test(
             # computing agreements and disagreements
             model_1_binary = pred_1 == y_test
             model_2_binary = pred_2 == y_test
-            
-            # initializing agreement/disagreement counts
-            n_11 = 0   # both models are right
-            n_12 = 0   # model_1 is right and model_2 is wrong
-            n_21 = 0   # model_1 is wrong and model_2 is right
-            n_22 = 0   # both models are wrong
 
-            # checking which model(s) is right and wrong
-            for val_1, val_2 in (model_1_binary, model_2_binary):
-                if val_1 == 1 and val_2 == 1:
-                    n_11 += 1
-                elif val_1 == 1 and val_2 == 0:
-                    n_12 += 1
-                elif val_1 == 0 and val_2 == 1:
-                    n_21 += 1
-                else:
-                    n_22 += 1
+            # computing agreements/disagreements
+            n_11 = np.sum((model_1_binary == 1) & (model_2_binary == 1))
+            n_12 = np.sum((model_1_binary == 1) & (model_2_binary == 0))
+            n_21 = np.sum((model_1_binary == 0) & (model_2_binary == 1))
+            n_22 = np.sum((model_1_binary == 0) & (model_2_binary == 0))
             
             # adding counts to fold_results
             fold_results["n_11"].append(n_11)
@@ -612,7 +601,7 @@ def performance_diff_test(
         # computing preliminary variables
         n_12 = np.sum(fold_results["n_12"])
         n_21 = np.sum(fold_results["n_21"])
-        m = np.min(n_12, n_21)
+        m = np.min([n_12, n_21])
         E_theta = (n_12 - n_21) / n
         Q_numerator = n**2 * (n+1) * (E_theta + 1) * (1 - E_theta)
         Q_denominator = n * (n_12 + n_21) - (n_12 - n_21)**2
