@@ -361,7 +361,7 @@ class BaselineClassifier(BaseEstimator, ClassifierMixin):
 
 class ANNRegressor(BaseEstimator, RegressorMixin):
     def __init__(
-        self, hidden_dim, input_dim=8, n_epochs=2500, learning_rate=1e-5, verbose=True
+        self, hidden_dim, input_dim=8, n_epochs=200, learning_rate=1e-3, verbose=True
     ):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
@@ -390,8 +390,8 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
 
         self.losses = []
         self.criterion = torch.nn.MSELoss()
-        self.optimizer = torch.optim.Adam(
-            params=self.model_.parameters(), lr=self.learning_rate_
+        self.optimizer = torch.optim.AdamW(
+            params=self.model_.parameters(), lr=self.learning_rate_, amsgrad=True
         )
 
         for epoch in range(self.n_epochs_):
@@ -429,7 +429,7 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
 
 class ANNClassifier(BaseEstimator, ClassifierMixin):
     def __init__(
-        self, hidden_dim, input_dim=8, n_epochs=2500, learning_rate=1e-5, verbose=True
+        self, hidden_dim, input_dim=8, n_epochs=200, learning_rate=1e-3, verbose=True
     ):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
@@ -457,8 +457,8 @@ class ANNClassifier(BaseEstimator, ClassifierMixin):
 
         self.losses = []
         self.criterion = torch.nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(
-            params=self.model_.parameters(), lr=self.learning_rate_
+        self.optimizer = torch.optim.AdamW(
+            params=self.model_.parameters(), lr=self.learning_rate_, amsgrad=True
         )
 
         for epoch in range(self.n_epochs_):

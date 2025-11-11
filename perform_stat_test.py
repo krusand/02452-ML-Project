@@ -31,10 +31,14 @@ base_reg = BaselineRegressor()
 lin_reg = lm.Ridge(alpha=reg_ridge_lam_parameter)
 ann_reg = ANNRegressor(hidden_dim=reg_ann_h_parameter, input_dim=len(FEATURES_REGRESSION))
 
-
 # loading the data
 df = pd.read_csv("data/heartDisease.csv")
 
+save_dict = {
+    'test': [],
+    'p_value': [],
+    'CI (L, U)': []
+}
 
 # preprocessing data for regression
 PreProp_reg = Preprocessor(task="regression", covariates=FEATURES_REGRESSION, independent=OUTCOME_REGRESSION)
@@ -48,8 +52,13 @@ model_comparisons_reg = [(lin_reg, base_reg),
 
 for m1, m2 in model_comparisons_reg:
     p_val, lower, upper = performance_diff_test(mode="regression", model_1=m1, model_2=m2, X=X_reg, y=y_reg, seed=reg_cv_seed_used)
+    print(f"Testing model {m1} vs {m2}")
     print(f"p_val: {p_val}")
     print(f"CI: [{lower:.3f}, {upper:.3f}]")
+    save_dict["test"].append((m1.__class__.__name__, m2.__class__.__name__))
+    save_dict["p_value"].append(p_val)
+    save_dict["CI (L, U)"].append((float(lower), float(upper)))
+
 
 # preprocessing data for classification
 PreProp_clf = Preprocessor(task="classification", covariates=FEATURES_CLASSIFICATION, independent=OUTCOME_CLASSIFICATION)
@@ -80,5 +89,11 @@ model_comparisons_clf = [(log_reg_clf, ann_clf),
 
 for m1, m2 in model_comparisons_clf:
     p_val, lower, upper = performance_diff_test(mode="classification", model_1=m1, model_2=m2, X=X_clf, y=y_clf, seed=clf_cv_seed_used)
+    print(f"Testing model {m1} vs {m2}")
     print(f"p_val: {p_val}")
     print(f"CI: [{lower:.3f}, {upper:.3f}]")
+    save_dict["test"].append((m1.__class__.__name__, m2.__class__.__name__))
+    save_dict["p_value"].append(p_val)
+    save_dict["CI (L, U)"].append((float(lower), float(upper)))
+
+pd.DataFrame().from_dict(save_dict).to_csv("stat_results/stat_result.csv", index=False)
