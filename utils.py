@@ -589,7 +589,7 @@ def performance_diff_test(
         z_hat = np.mean(z)
 
         # empirical standard deviation (eq 11.52c in the ML book)
-        emp_var = (1 / n*(n-1)) * np.sum([(z_val - z_hat)**2 for z_val in z])
+        emp_var = (1 / (n*(n-1))) * np.sum([(z_val - z_hat)**2 for z_val in z])
 
         # computing the p-value (eq 11.53 in the ML book)
         p_val = 2 * t.cdf(x=-abs(z_hat), df=n-1, loc=0, scale=np.sqrt(emp_var))
