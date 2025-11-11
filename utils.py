@@ -600,13 +600,13 @@ def performance_diff_test(
         z_hat = np.mean(z)
 
         # empirical standard deviation (eq 11.52c in the ML book)
-        emp_std = (1 / n*(n-1)) * np.sum([(z_val - z_hat)**2 for z_val in z])
+        emp_var = (1 / n*(n-1)) * np.sum([(z_val - z_hat)**2 for z_val in z])
 
         # computing the p-value (eq 11.53 in the ML book)
-        p_val = 2 * t.cdf(x=-abs(z_hat), df=n-1, loc=0, scale=np.sqrt(emp_std))
+        p_val = 2 * t.cdf(x=-abs(z_hat), df=n-1, loc=0, scale=np.sqrt(emp_var))
 
         # computing the lower and upper bound for the confidence interval (eq 11.52a and 11.52b in the ML book)
-        lower, upper = t.ppf(q=[alpha/2, 1-alpha/2], df=n-1, loc=z_hat, scale=emp_std)
+        lower, upper = t.ppf(q=[alpha/2, 1-alpha/2], df=n-1, loc=z_hat, scale=np.sqrt(emp_var))
 
     elif mode == "classification":
         # computing preliminary variables
