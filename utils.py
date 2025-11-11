@@ -533,7 +533,7 @@ def performance_diff_test(
     for i, (train_idx, test_idx) in enumerate(kfold_out.split(X)):
         # define train and test set for fold
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx].values.ravel()
 
         # adding to the value of test objects
         n += len(y_test)
