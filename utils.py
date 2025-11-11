@@ -613,8 +613,8 @@ def performance_diff_test(
         p_val = 2 * binom.cdf(k=m, n=n_12+n_21, p=0.5)
 
         # computing the lower and upper bound for the confidence interval (eq 11.35a and 11.35b in the ML book)
-        lower = beta.ppf(q=alpha/2, a=f, b=g) - 1
-        upper = beta.ppf(q=1-alpha/2, a=f, b=g) - 1
+        lower = 2 * beta.ppf(q=alpha/2, a=f, b=g) - 1
+        upper = 2 * beta.ppf(q=1-alpha/2, a=f, b=g) - 1
 
     return p_val, lower, upper
 
