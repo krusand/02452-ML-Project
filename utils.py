@@ -258,13 +258,13 @@ class Preprocessor:
 
         self.num_pipeline = Pipeline(
             steps=[
-                ("log_transform", LogTransformer(["alcohol", "tobacco"])),
+                ("log_transform", LogTransformer(list(set(["alcohol", "tobacco"]).intersection(self.CONTINUOUS_VARIABLES)))),
                 ("scaler", StandardScaler().set_output(transform="pandas")),
             ]
         )
 
         self.cat_pipeline = Pipeline(
-            steps=[("labelencoder", ModifiedLabelEncoder(["chd", "famhist"]))]
+            steps=[("labelencoder", ModifiedLabelEncoder(self.CATEGORICAL_VARIABLES))]
         )
 
         self.preproc = ColumnTransformer(
