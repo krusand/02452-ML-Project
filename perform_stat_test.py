@@ -42,13 +42,15 @@ PreProp_reg.fit(df)
 X_reg, y_reg = PreProp_reg.transform(df)
 
 # regression model comparisons
-model_comparisons_reg = [(lin_reg, base_reg)
-                         , (base_reg, lin_reg)]
+model_comparisons_reg = [(lin_reg, base_reg),
+                         (lin_reg, ann_reg),
+                         (ann_reg, base_reg)]
 
 for m1, m2 in model_comparisons_reg:
     p_val, lower, upper = performance_diff_test(mode="regression", model_1=m1, model_2=m2, X=X_reg, y=y_reg, seed=reg_cv_seed_used)
     print(f"p_val: {p_val}")
     print(f"CI: [{lower:.3f}, {upper:.3f}]")
+
 # preprocessing data for classification
 PreProp_clf = Preprocessor(task="classification", covariates=FEATURES_CLASSIFICATION, independent=OUTCOME_CLASSIFICATION)
 PreProp_clf.fit(df)
@@ -72,7 +74,11 @@ clf_cv_seed_used = int(classification_results["cv_seed_used"].drop_duplicates().
 
 
 # classification model comparisons
-model_comparisons_clf = [(log_reg_clf, ann_clf)]
+model_comparisons_clf = [(log_reg_clf, ann_clf),
+                         (log_reg_clf, base_clf),
+                         (ann_clf, base_clf)]
 
 for m1, m2 in model_comparisons_clf:
     p_val, lower, upper = performance_diff_test(mode="classification", model_1=m1, model_2=m2, X=X_clf, y=y_clf, seed=clf_cv_seed_used)
+    print(f"p_val: {p_val}")
+    print(f"CI: [{lower:.3f}, {upper:.3f}]")
