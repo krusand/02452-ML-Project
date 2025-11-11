@@ -551,10 +551,11 @@ def performance_diff_test(
             # computing sum of difference in squared losses
             z_1 = (pred_1 - y_test)**2
             z_2 = (pred_2 - y_test)**2
-            z = np.sum(z_1 - z_2)
+            z_i = z_1 - z_2
 
             # adding result to fold_results
-            fold_results["z"].append(z)
+            for z_val in z_i:
+                fold_results["z"].append(z_val)
         
         elif mode == "classification":
             # computing agreements and disagreements
@@ -569,13 +570,13 @@ def performance_diff_test(
 
     if mode == "regression":
         # vector containing all z_i values
-        z_i = fold_results["z"]
+        z = fold_results["z"]
 
         # average z_i value (eq 11.52c in the ML book)
-        z_hat = np.mean(z_i)
+        z_hat = np.mean(z)
 
         # empirical standard deviation (eq 11.52c in the ML book)
-        emp_std = (1 / n*(n-1)) * np.sum([(z - z_hat)**2 for z in z_i])
+        emp_std = (1 / n*(n-1)) * np.sum([(z_val - z_hat)**2 for z_val in z])
 
         # computing the p-value (eq 11.53 in the ML book)
         p_val = 2 * t.cdf(x=-abs(z_hat), df=n-1, loc=0, scale=emp_std)
