@@ -1,4 +1,4 @@
-fold,model,param_name,param_val,test_error,cv_seed_used1,ANNRegressor,h,100,543.5501708984375,131125
+fold,model,param_name,param_val,test_error,cv_seed_used
 1,ANNRegressor,h,1,693.4292602539062,131125
 2,ANNRegressor,h,90,599.5510864257812,131125
 3,ANNRegressor,h,90,508.8353576660156,131125

@@ -1,4 +1,4 @@
-fold,model,param_name,param_val,test_error,cv_seed_used1,ANNClassifier,h,80,0.23404255319148937,131125
+fold,model,param_name,param_val,test_error,cv_seed_used
 1,ANNClassifier,h,80,0.4042553191489362,131125
 2,ANNClassifier,h,80,0.3191489361702128,131125
 3,ANNClassifier,h,90,0.17391304347826086,131125
