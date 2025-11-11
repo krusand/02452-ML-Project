@@ -361,7 +361,7 @@ class BaselineClassifier(BaseEstimator, ClassifierMixin):
 
 class ANNRegressor(BaseEstimator, RegressorMixin):
     def __init__(
-        self, hidden_dim, input_dim=10, n_epochs=10_000, learning_rate=1e-5, verbose=True
+        self, hidden_dim, input_dim=10, n_epochs=300, learning_rate=1e-5, verbose=True
     ):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
@@ -429,7 +429,7 @@ class ANNRegressor(BaseEstimator, RegressorMixin):
 
 class ANNClassifier(BaseEstimator, ClassifierMixin):
     def __init__(
-        self, hidden_dim, input_dim=9, n_epochs=10_000, learning_rate=1e-5, verbose=True
+        self, hidden_dim, input_dim=9, n_epochs=300, learning_rate=1e-5, verbose=True
     ):
         self.hidden_dim_ = hidden_dim
         self.input_dim_ = input_dim
