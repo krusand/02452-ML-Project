@@ -3,15 +3,27 @@ import sklearn.linear_model as lm
 
 from utils import BaselineRegressor, ANNRegressor, Preprocessor, BaselineClassifier, ANNClassifier, performance_diff_test
 
+regression_results = pd.read_csv("tlcv_results/regression_results.csv")
+classification_results = pd.read_csv("tlcv_results/classification_results.csv")
+regression_results_grouped = regression_results.groupby(["model", "param_name"], dropna=False)["param_val"].agg(pd.Series.mode).to_frame().reset_index()
+classification_results_grouped = classification_results.groupby(["model", "param_name"], dropna=False)["param_val"].agg(pd.Series.mode).to_frame().reset_index()
+
+reg_ridge_lam_parameter = regression_results_grouped[(regression_results_grouped["model"] == "Ridge") & (regression_results_grouped["param_name"] == "lambda")]["param_val"].values[0]
+reg_ann_h_parameter = regression_results_grouped[(regression_results_grouped["model"] == "ANNRegressor") & (regression_results_grouped["param_name"] == "h")]["param_val"].values[0]
+
+clf_logistic_lam_parameter = classification_results_grouped[(classification_results_grouped["model"] == "LogisticRegression") & (classification_results_grouped["param_name"] == "lambda")]["param_val"].values[0]
+clf_ann_h_parameter = classification_results_grouped[(classification_results_grouped["model"] == "ANNClassifier") & (classification_results_grouped["param_name"] == "h")]["param_val"].values[0]
+
+
 # regression models
 base_reg = BaselineRegressor()
-lin_reg = lm.Ridge(alpha=50)
-ann_reg = ANNRegressor(hidden_dim=50)
+lin_reg = lm.Ridge(alpha=reg_ridge_lam_parameter)
+ann_reg = ANNRegressor(hidden_dim=reg_ann_h_parameter)
 
 # classification models
 base_clf = BaselineClassifier()
-log_reg_clf = lm.LogisticRegression(penalty="l2", C=1/10)
-ann_clf = ANNClassifier(hidden_dim=50)
+log_reg_clf = lm.LogisticRegression(penalty="l2", C=1/clf_logistic_lam_parameter)
+ann_clf = ANNClassifier(hidden_dim=clf_ann_h_parameter)
 
 # loading the data
 df = pd.read_csv("data/heartDisease.csv")
