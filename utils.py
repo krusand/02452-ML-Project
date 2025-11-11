@@ -30,7 +30,7 @@ from sklearn.base import (
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.compose import ColumnTransformer
 
-BASE_CONT_VARIABLES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "adiposity"]
+BASE_CONT_VARIABLES = ["sbp", "tobacco", "ldl", "typea", "alcohol", "age", "adiposity", "obesity"]
 BASE_CAT_VARIABLES = ["chd", "famhist"]
 
 
@@ -147,6 +147,7 @@ def two_layer_cv(
         results["param_name"].append(param_name)
         results["param_val"].append(param_val)
         results["test_error"].append(test_error)
+        results["cv_seed_used"].append(seed)
 
     # converting results dict to dataframe
     df = pd.DataFrame.from_dict(results)
