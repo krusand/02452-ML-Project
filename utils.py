@@ -514,6 +514,11 @@ def performance_diff_test(
     - lower: The lower b ound of the confidence interval.
     - upper: The upper bound of the confidence interval.
     """
+    assert mode in {
+        "classification",
+        "regression",
+    }, f"mode must equal either 'classification' or 'regression', mode provided {mode}"
+
     # dictionary to contain results per fold
     fold_results = defaultdict(list)
 
@@ -553,9 +558,6 @@ def performance_diff_test(
             # computing agreements and disagreements
             model_1_binary = pred_1 == y_test
             model_2_binary = pred_2 == y_test
-        
-        else: 
-            raise ValueError("mode parameter should be either 'regression' or 'classification'.")
         
         # adding fold number to fold_results
         fold_results["fold"].append(i)   # delete if not using this key
@@ -599,3 +601,5 @@ def performance_diff_test(
         upper = beta.ppf(q=1-alpha/2, a=f, b=g) - 1
 
     return p_val, lower, upper
+
+
