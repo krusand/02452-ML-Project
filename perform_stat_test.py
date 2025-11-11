@@ -22,6 +22,38 @@ reg_ann_h_parameter = int(regression_results_grouped[(regression_results_grouped
 if np.array(reg_ann_h_parameter).shape != ():
     reg_ann_h_parameter = int(reg_ann_h_parameter[0])
 
+reg_cv_seed_used = int(regression_results["cv_seed_used"].drop_duplicates().values[0])
+
+
+
+# regression models
+base_reg = BaselineRegressor()
+lin_reg = lm.Ridge(alpha=reg_ridge_lam_parameter)
+ann_reg = ANNRegressor(hidden_dim=reg_ann_h_parameter, input_dim=len(FEATURES_REGRESSION))
+
+
+# loading the data
+df = pd.read_csv("data/heartDisease.csv")
+
+
+# preprocessing data for regression
+PreProp_reg = Preprocessor(task="regression", covariates=FEATURES_REGRESSION, independent=OUTCOME_REGRESSION)
+PreProp_reg.fit(df)
+X_reg, y_reg = PreProp_reg.transform(df)
+
+# regression model comparisons
+model_comparisons_reg = [(lin_reg, base_reg)
+                         , (base_reg, lin_reg)]
+
+for m1, m2 in model_comparisons_reg:
+    p_val, lower, upper = performance_diff_test(mode="regression", model_1=m1, model_2=m2, X=X_reg, y=y_reg, seed=reg_cv_seed_used)
+    print(f"p_val: {p_val}")
+    print(f"CI: [{lower:.3f}, {upper:.3f}]")
+# preprocessing data for classification
+PreProp_clf = Preprocessor(task="classification", covariates=FEATURES_CLASSIFICATION, independent=OUTCOME_CLASSIFICATION)
+PreProp_clf.fit(df)
+X_clf, y_clf = PreProp_clf.transform(df)
+
 clf_logistic_lam_parameter = classification_results_grouped[(classification_results_grouped["model"] == "LogisticRegression") & (classification_results_grouped["param_name"] == "lambda")]["param_val"].values[0]
 if np.array(clf_logistic_lam_parameter).shape != ():
     clf_logistic_lam_parameter = clf_logistic_lam_parameter[0]
@@ -31,43 +63,13 @@ clf_ann_h_parameter = int(classification_results_grouped[(classification_results
 if np.array(clf_ann_h_parameter).shape != ():
     clf_ann_h_parameter = int(clf_ann_h_parameter[0])
 
-
-
-
-clf_cv_seed_used = int(classification_results["cv_seed_used"].drop_duplicates().values[0])
-reg_cv_seed_used = int(regression_results["cv_seed_used"].drop_duplicates().values[0])
-
-
-
-# regression models
-base_reg = BaselineRegressor()
-lin_reg = lm.Ridge(alpha=reg_ridge_lam_parameter)
-ann_reg = ANNRegressor(hidden_dim=reg_ann_h_parameter)
-
 # classification models
 base_clf = BaselineClassifier()
 log_reg_clf = lm.LogisticRegression(penalty="l2", C=1/clf_logistic_lam_parameter)
-ann_clf = ANNClassifier(hidden_dim=clf_ann_h_parameter)
+ann_clf = ANNClassifier(hidden_dim=clf_ann_h_parameter, input_dim=len(FEATURES_CLASSIFICATION))
 
-# loading the data
-df = pd.read_csv("data/heartDisease.csv")
+clf_cv_seed_used = int(classification_results["cv_seed_used"].drop_duplicates().values[0])
 
-# preprocessing data for regression
-PreProp_reg = Preprocessor(task="regression", covariates=FEATURES_REGRESSION, independent=OUTCOME_REGRESSION)
-PreProp_reg.fit(df)
-X_reg, y_reg = PreProp_reg.transform(df)
-
-# regression model comparisons
-model_comparisons_reg = [(lin_reg, base_reg)]
-
-for m1, m2 in model_comparisons_reg:
-    p_val, lower, upper = performance_diff_test(mode="regression", model_1=m1, model_2=m2, X=X_reg, y=y_reg, seed=reg_cv_seed_used)
-print(f"p_val: {p_val}")
-print(f"CI: [{lower:.3f}, {upper:.3f}]")
-# preprocessing data for classification
-PreProp_clf = Preprocessor(task="classification", covariates=FEATURES_CLASSIFICATION, independent=OUTCOME_CLASSIFICATION)
-PreProp_clf.fit(df)
-X_clf, y_clf = PreProp_clf.transform(df)
 
 # classification model comparisons
 model_comparisons_clf = [(log_reg_clf, ann_clf)]
