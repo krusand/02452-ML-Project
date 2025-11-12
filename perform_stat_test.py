@@ -24,7 +24,8 @@ if np.array(reg_ann_h_parameter).shape != ():
 
 reg_cv_seed_used = int(regression_results["cv_seed_used"].drop_duplicates().values[0])
 
-
+print(f"{reg_ann_h_parameter = }")
+print(f"{reg_ridge_lam_parameter = }")
 
 # regression models
 base_reg = BaselineRegressor()
@@ -73,6 +74,9 @@ clf_logistic_lam_parameter = float(clf_logistic_lam_parameter)
 clf_ann_h_parameter = int(classification_results_grouped[(classification_results_grouped["model"] == "ANNClassifier") & (classification_results_grouped["param_name"] == "h")]["param_val"].values[0])
 if np.array(clf_ann_h_parameter).shape != ():
     clf_ann_h_parameter = int(clf_ann_h_parameter[0])
+
+print(f"{clf_logistic_lam_parameter = }")
+print(f"{clf_ann_h_parameter = }")
 
 # classification models
 base_clf = BaselineClassifier()
